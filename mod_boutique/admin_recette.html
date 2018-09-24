@@ -1,0 +1,1688 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" type="text/css" href="../include/main.css" />
+		<script type="text/javascript" src="../include/main.js"></script>
+
+		<!--<script src="../include/jquery-1.4.4.min.js" type="text/javascript"></script>-->
+		
+		<link rel="stylesheet" type="text/css" href="../include/ext/resources/css/ext-all.css"/>
+		<link rel="stylesheet" type="text/css" href="../include/data-view.css"/>		
+		<script type="text/javascript" src="../include/ext/ext-all.js"></script>
+		
+		<style>
+			.arbo_name { text-align:-moz-center;text-align:center; }
+			.table_produits td { padding:20px; }
+			.table_produits img { cursor:default; }
+			.table_button td { padding:2px; }
+			.table_button img { cursor:pointer; }
+			
+			.product_name { cursor:default;font-weight:bold;font-size:11px; }
+			.product_arbo { cursor:default;text-align:-moz-center;text-align:center;font-size:10px;color:#777; }
+			
+			.panel_preparation { padding:5px;background-color:white; }
+			.panel_preparation_title { color:#CED9E7;cursor:default;font-weight:bold;font-size:12px; }
+			.panel_prep_right { width:415px;height:130px;margin-top:10px; }
+			
+			.panel_recette_content { overflow-y:none;overflow-x:scroll;height:100px;width:400px; }
+			.new-thumb-wrap { margin-right:5px; }
+			.toolbar_button img { cursor:pointer; }
+			
+			.ingredient_categorie { font-weight:bold;color:#333;font-size:10px;cursor:default; }
+			.ingredient_details { padding-left:5px;color:#666;font-size:10px;cursor:pointer; }
+			.ingredient_produit { padding-left:5px;color:darkblue;font-size:10px;cursor:default; }
+		</style>
+		
+		<script>		
+			Ext.onReady(function(){
+			
+				Ext.QuickTips.init();
+				
+				store = new Ext.data.JsonStore({
+					storeId: 'imageStore',
+					proxy: {
+						type: 'ajax',
+						url: 'admin_recette.php?do=get_list_image',
+						reader: {
+							type: 'json',
+							root: 'images',
+							idProperty: 'name'
+						}
+					},
+					fields: ['name','filename', {name:'size', type: 'float'}, {name:'lastmod', type:'date'}, 'url', 'thumb_url' ]
+				});			
+				
+				var tpl = new Ext.XTemplate(
+					'<tpl for=".">',
+						'<div class="thumb-wrap">',
+						'<div class="thumb"><img src="{thumb_url}" title="{filename}"></div>',
+						'<span class="x-editable">{shortName}</span></div>',
+					'</tpl>',
+					'<div class="x-clear"></div>'
+				);
+				var tpl_logo_coupon = new Ext.XTemplate(
+					'<tpl for=".">',
+						'<div class="thumb-wrap">',
+						'<div class="thumb"><img src="{thumb_url}" title="{filename}"></div>',
+						'<span class="x-editable">{shortName}</span></div>',
+					'</tpl>',
+					'<div class="x-clear"></div>'
+				);
+				var tpl_produit = new Ext.XTemplate(
+					'<tpl for=".">',
+						'<div class="thumb-wrap">',
+						'<div class="thumb"><img src="{thumb_url}" title="{filename}"></div>',
+						'<span class="x-editable">{shortName}</span></div>',
+					'</tpl>',
+					'<div class="x-clear"></div>'
+				);
+
+				tbar = new Ext.Toolbar({
+					style: 'border:1px solid #99BBE8;',
+					items: [
+								{
+									xtype: 'textfield',
+									width:	150,
+									id: 'filtre_pick_up_img_recette'
+								},
+								{	
+									icon: '../images/search.png',
+									handler: function(){ search_img_recette(); },
+									tooltip: {text:'Filtrer par nom'}
+								}
+						]
+				});
+
+				datav = new Ext.DataView({
+					autoScroll: true,
+					store: store,
+					tpl: tpl,
+					autoHeight: false,
+					height: 325,
+					multiSelect: false,
+					overClass: 'x-view-over',
+					itemSelector: 'div.thumb-wrap',
+					emptyText: 'No images to display',
+					style: 'border:1px solid #99BBE8; border-top-width: 0',
+
+					prepareData: function(data){
+						return data;
+					},
+
+					listeners: {
+						selectionchange: {
+							fn: function(dv,nodes){
+								if(nodes.length > 0)
+									select_recette_img( nodes[0].data['filename'] );
+							}
+						}
+					}
+				});
+				
+				storePickUpLogoCoupon = new Ext.data.JsonStore({
+					storeId: 'imageStoreLogoCoupon',
+					proxy: {
+						type: 'ajax',
+						url: '',
+						reader: {
+							type: 'json',
+							root: 'images',
+							idProperty: 'name'
+						}
+					},
+					fields: ['name','filename', {name:'size', type: 'float'}, {name:'lastmod', type:'date'}, 'url', 'thumb_url' ]
+				});	
+
+				tbarPickUpLogoCoupon = new Ext.Toolbar({
+					style: 'border:1px solid #99BBE8;',
+					items: [
+								{
+									xtype: 'textfield',
+									width:	150,
+									id: 'filtre_pick_up_logo_coupon'
+								},
+								{	
+									icon: '../images/search.png',
+									handler: function(){ search_pickup_logo_coupon(); },
+									tooltip: {text:'Filtrer par nom'}
+								}
+						]
+				});
+
+				datavPickUpLogoCoupon = new Ext.DataView({
+					autoScroll: true,
+					store: storePickUpLogoCoupon,
+					tpl: tpl_logo_coupon,
+					autoHeight: false,
+					height: 325,
+					multiSelect: false,
+					overClass: 'x-view-over',
+					itemSelector: 'div.thumb-wrap',
+					emptyText: 'No images to display',
+					style: 'border:1px solid #99BBE8; border-top-width: 0',
+
+					prepareData: function(data){
+						return data;
+					},
+
+					listeners: {
+						selectionchange: {
+							fn: function(dv,nodes){
+								if(nodes.length > 0)
+									select_pick_up_logo_coupon( nodes[0].data['url'] );
+							}
+						}
+					}
+				});
+				
+				storePickUpProduit = new Ext.data.JsonStore({
+					storeId: 'imageStoreProduit',
+					proxy: {
+						type: 'ajax',
+						url: '',
+						reader: {
+							type: 'json',
+							root: 'images',
+							idProperty: 'name'
+						}
+					},
+					fields: ['name','filename', {name:'size', type: 'float'}, {name:'lastmod', type:'date'}, 'url', 'thumb_url' ]
+				});	
+
+				tbarPickUpProduit = new Ext.Toolbar({
+					style: 'border:1px solid #99BBE8;',
+					items: [
+								{
+									xtype: 'textfield',
+									width:	150,
+									id: 'filtre_pick_up_produit'
+								},
+								{	
+									icon: '../images/search.png',
+									handler: function(){ search_pickup_produit(); },
+									tooltip: {text:'Filtrer par nom ou code produit'}
+								}
+						]
+				});
+
+				datavPickUpProduit = new Ext.DataView({
+					autoScroll: true,
+					store: storePickUpProduit,
+					tpl: tpl_produit,
+					autoHeight: false,
+					height: 302,
+					multiSelect: false,
+					overClass: 'x-view-over',
+					itemSelector: 'div.thumb-wrap',
+					emptyText: 'No images to display',
+					style: 'border:1px solid #99BBE8; border-top-width: 0',
+
+					prepareData: function(data){
+						return data;
+					},
+
+					listeners: {
+						selectionchange: {
+							fn: function(dv,nodes){
+								if(nodes.length > 0)
+									select_pick_up_produit( nodes[0].data['url'] );
+							}
+						}
+					}
+				});
+				
+				myInputTextHtml = Ext.extend(Ext.form.HtmlEditor, {
+					initComponent:function() {
+						config = {
+							xtype:'htmleditor',
+							fieldLabel:'',
+							height:120,
+							width:400,
+							enableSourceEdit:false,
+							enableLinks:false,
+							enableAlignments:false
+						};
+						Ext.apply(this, Ext.apply(this.initialConfig, config)); 
+						myInputTextHtml.superclass.initComponent.apply(this, arguments); 
+					}
+				});
+				
+				panelRecetteDescription = new myInputTextHtml();
+				panelRecetteDescription.render('panel_recette_description');
+				
+				panelRecetteDetailsPreparation = new myInputTextHtml();
+				panelRecetteDetailsPreparation.render('panel_recette_details_preparation');
+
+				var panelLeft = new Ext.Panel({
+					id: 'images-view',
+					frame: true,
+					width: 540,
+					height: 360,
+					autoHeight: true,
+					layout: 'auto',
+					items: [ datav , tbar ]
+				});
+				panelLeft.render('pick_up_img_recette_content');
+				
+				var panelLeftPickUpLogoCoupon = new Ext.Panel({
+					id: 'images-view_bis',
+					frame: true,
+					width: 540,
+					height: 360,
+					autoHeight: true,
+					layout: 'auto',
+					items: [ datavPickUpLogoCoupon , tbarPickUpLogoCoupon ]
+				});
+				panelLeftPickUpLogoCoupon.render('panel_pickup_logo_coupon_content');
+				
+				var panelLeftPickUpProduit = new Ext.Panel({
+					id: 'images-view_ter',
+					frame: true,
+					width: 540,
+					height: 360,
+					autoHeight: true,
+					layout: 'auto',
+					items: [ datavPickUpProduit , tbarPickUpProduit ]
+				});
+				panelLeftPickUpProduit.render('panel_pickup_produit_content');
+				
+				panelPickUpImgRecette = Ext.create('Ext.window.Window',{
+												title: 'Choisir une image pour illustrer la recette - Cliquer pour s&eacute;lectionner'
+												,layout: 'fit'
+												,height: 395
+												,width: 550
+												,closable: true
+												,resizable: false
+												,closeAction: 'hide'
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_pick_up_img_recette'												
+											});
+											
+				panelRecette = Ext.create('Ext.window.Window',{
+												title: ''
+												,layout: 'fit'
+												,height: 510
+												,width: 870
+												,closable: false
+												,resizable: false
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_recette'												
+											});
+											
+				panelPickUpLogoCoupon = Ext.create('Ext.window.Window',{
+												title: ''
+												,layout: 'fit'
+												,height: 395
+												,width: 550
+												,closable: true
+												,closeAction: 'hide'
+												,resizable: false
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_pickup_logo_coupon'												
+											});
+											
+				panelPickUpProduit = Ext.create('Ext.window.Window',{
+												title: 'Choisir le produit dans la liste - Cliquer pour s&eacute;lectionner'
+												,layout: 'fit'
+												,height: 395
+												,width: 550
+												,closable: true
+												,closeAction: 'hide'
+												,resizable: false
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_pickup_produit'												
+											});
+											
+				panelRecetteIngredient = Ext.create('Ext.window.Window',{
+												title: ''
+												,layout: 'fit'
+												,height: 185
+												,width: 425
+												,closable: false
+												,closeAction: 'hide'
+												,resizable: false
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_recette_ingredient'												
+											});
+				
+				panelMoveRecette = Ext.create('Ext.window.Window',{
+												title: 'S&eacute;lectionner la destination'
+												,layout: 'fit'
+												,height: 150
+												,width: 600
+												,closable: false
+												,resizable: false
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_move_recette'												
+											});
+				
+				edit_panel_recette('new',0);
+				hide_panel_recette();
+				
+				prepare_rubrique_select('recette','');
+				prepare_rubrique_select('recette','_move');
+				prepare_rubrique_select('produit','');
+			});
+			
+			function show_panel_pick_up_img_recette()
+			{
+				store.load();
+				store.clearFilter();
+				Ext.getCmp('filtre_pick_up_img_recette').setValue();
+				panelPickUpImgRecette.show();
+			}
+			
+			function select_recette_img( src )
+			{
+				document.getElementById('panel_recette_img_src').value = src;
+			
+				if(src != '')
+					src = document.getElementById('path_images').value + src;
+				else
+					src = '../images/none.png';
+				
+				document.getElementById('panel_recette_img').src = src;
+				
+				panelPickUpImgRecette.hide();
+			}
+			
+			function search_img_recette()
+			{
+				store.clearFilter();			
+				var filtre = Ext.getCmp('filtre_pick_up_img_recette').getValue();
+				if(filtre != '')
+				{
+					var regexp = new RegExp(filtre.toLowerCase());
+					store.filter('name',regexp);
+				}
+			}
+		
+			function search_pickup_logo_coupon()
+			{
+				storePickUpLogoCoupon.clearFilter();			
+				var filtre = Ext.getCmp('filtre_pick_up_logo_coupon').getValue();
+				if(filtre != '')
+				{
+					var regexp = new RegExp(filtre.toLowerCase());
+					storePickUpLogoCoupon.filter('name',regexp);
+				}
+			}
+			
+			function createRequestObject()
+			{
+				var http;
+				if(window.XMLHttpRequest)
+				{ // Mozilla, Safari, ...
+					http = new XMLHttpRequest();
+				}
+				else if(window.ActiveXObject)
+				{ // Internet Explorer
+					http = new ActiveXObject("Microsoft.XMLHTTP");
+				}
+				return http;
+			}
+			
+			function prepare_rubrique_select(type,sub)
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							switch(type)
+							{
+								case 'recette' :
+									document.getElementById('rubrique_content'+sub).innerHTML = http.responseText;
+									if(sub == '')
+										get_liste_recette();
+								break;
+								case 'produit' :
+									document.getElementById('rubrique_produit_content').innerHTML = http.responseText;
+									get_list_produit();
+								break;
+							}
+						}
+					}
+				};
+				var data='do=prepare_rubrique_select';
+				data += '&type='+type;
+				data += '&sub='+sub;
+
+				http.send(data);
+			}
+			
+			function select_rubrique_recette(id_tag,range)
+			{
+				var parent = document.getElementById('select_rubrique_recette'+id_tag+'_range_'+range).value;
+				range ++;
+				
+				try{
+					for(i = range; i < 10; i ++)					
+						document.getElementById('rubrique_recette'+id_tag+'_range_'+i+'_content').innerHTML = '';
+				}catch(e){}
+				
+				var ok = 1;
+				if(parent == "0" && range != "0")
+					ok = 0;					
+				
+				if(ok == 1)
+				{
+					var res = '<select id="select_rubrique_recette'+id_tag+'_range_'+range+'" onchange="select_rubrique_recette(\''+id_tag+'\',\''+range+'\');">';
+					res += '<option value="0"></option>';
+					var count = 0;
+					try{
+						for(i = 0;i < document.getElementById('liste_rubrique_recette'+id_tag+'_'+parent+'_count').value; i++)
+						{
+							res += '<option value="'+document.getElementById('liste_rubrique_recette'+id_tag+'_'+parent+'_'+i+'_id').value+'">'+document.getElementById('liste_rubrique_recette'+id_tag+'_'+parent+'_'+i+'_name').value+'</option>';
+							count ++;
+						}
+					}catch(e){}
+					res += '</select>';
+					
+					try{
+						if(count > 0)
+							document.getElementById('rubrique_recette'+id_tag+'_range_'+range+'_content').innerHTML = res;
+					}catch(e){}
+				}
+
+				switch(id_tag)
+				{
+					case '' :
+						get_liste_recette();
+					break;
+					case '_move' :
+					break;
+					case '_produit' :
+						get_list_produit();
+					break;
+				}
+			}
+			
+			function get_liste_recette()
+			{			
+				var id = 0;
+				var i = 0;
+				try{
+					while(1)
+					{
+						if(document.getElementById('select_rubrique_recette_range_'+i).value != '0')
+							id = document.getElementById('select_rubrique_recette_range_'+i).value;
+						i ++;
+					}
+				}catch(e){}
+				
+				document.getElementById('select_rubrique_recette_value').value = id;
+				if(id == 0)
+				{
+					document.getElementById('button_add_new_recette').disabled = true;
+					document.getElementById('button_add_new_recette').style.cursor = 'default';
+					document.getElementById('button_add_new_recette').title = 'Selectionner une rubrique pour ajouter une recette';
+				}
+				else
+				{
+					document.getElementById('button_add_new_recette').disabled = false;
+					document.getElementById('button_add_new_recette').style.cursor = 'pointer';
+					document.getElementById('button_add_new_recette').title = 'Ajouter une nouvelle recette';
+				}
+				
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{						
+							document.getElementById('liste_recette_content').innerHTML = http.responseText;
+							
+							document.getElementById('toolbar_info_nb_result_content').innerHTML = document.getElementById('toolbar_info_nb_result').value;
+							document.getElementById('toolbar_info_current_sql_content').value = document.getElementById('toolbar_info_current_sql').value;
+							document.getElementById('toolbar_info_current_page_content').value = document.getElementById('toolbar_info_current_page').value;
+							document.getElementById('toolbar_info_max_page_content').value = document.getElementById('toolbar_info_max_page').value;
+							
+							document.getElementById('toolbar_info_page_content').innerHTML = (parseInt(document.getElementById('toolbar_info_current_page_content').value) + 1) + " / " + document.getElementById('toolbar_info_max_page').value;
+							
+							get_selected_recette();
+						}
+					}
+				};
+				var data='do=get_liste_recette';
+				data += '&id=' + id;
+				data += '&search=' + document.getElementById('search_recette').value;
+				data += '&sort=' + document.getElementById('sort_recette').value;
+				data += '&sort_type=' + document.getElementById('sort_recette_type').value;
+				data += '&page=' + document.getElementById('toolbar_info_current_page_content').value;
+				data += '&filtre_photo=' + ((document.getElementById('filtre_recette_photo').checked)?'1':'0');
+				data += '&sql=' + document.getElementById('toolbar_info_current_sql_content').value;
+
+				http.send(data);
+			}
+			
+			function go_to_page(action)
+			{
+				var page = parseInt(document.getElementById('toolbar_info_current_page_content').value);
+				var max = parseInt(document.getElementById('toolbar_info_max_page_content').value);
+				var new_page = page;
+				
+				switch(action)
+				{
+					case 'first' :
+						new_page = 0;
+					break;
+					case 'previous' :
+						if(page > 0)
+							new_page = page - 1;
+					break;
+					case 'next' :
+						new_page = page + 1;
+						if(new_page >= max)
+							new_page = max - 1;
+					break;
+					case 'last' :
+						new_page = max - 1;
+					break;
+				}
+				
+				if(new_page != page)
+				{
+					document.getElementById('toolbar_info_current_page_content').value = new_page;
+					get_liste_recette();
+				}
+			}
+			
+			function edit_panel_recette(action,id)
+			{			
+				document.getElementById('panel_recette_action').value = action;
+				document.getElementById('panel_recette_id').value = id;
+				
+				get_recette_content('ingredient');
+				get_recette_content('logo');
+				get_recette_content('coupon');
+				
+				panelRecetteDescription.setValue('Description');	
+				panelRecetteDetailsPreparation.setValue('Détails de la préparation');	
+				switch(action)
+				{
+					case 'new' :
+						var title = 'Nouvelle recette';
+						var arbo = document.getElementById('select_rubrique_recette_value').value;
+						select_recette_img('');
+						document.getElementById('panel_recette_name').value = '';
+						document.getElementById('panel_recette_code').value = '';
+						document.getElementById('panel_recette_status_0').selected = true;
+						document.getElementById('panel_recette_priorite').value = '0';
+						document.getElementById('panel_recette_info_preparation').value = '';
+						document.getElementById('panel_recette_info_cuisson').value = '';		
+						document.getElementById('panel_recette_info_nb_people').value = '2';
+						document.getElementById('panel_recette_info_people_type').value = 'personnes';	
+						document.getElementById('panel_recette_info_complementaire').value = '';
+						document.getElementById('panel_recette_credit').value = '';
+						
+						document.getElementById('panel_recette_button_add_produit').disabled = true;
+						document.getElementById('panel_recette_button_add_produit').title = 'Vous devez enregistrer cette recette avant de pouvoir ajouter un nouvel ingredient';
+						document.getElementById('panel_recette_button_add_coupon').disabled = true;
+						document.getElementById('panel_recette_button_add_coupon').title = 'Vous devez enregistrer cette recette avant de pouvoir ajouter un nouveau coupon';
+						document.getElementById('panel_recette_button_add_logo').disabled = true;
+						document.getElementById('panel_recette_button_add_logo').title = 'Vous devez enregistrer cette recette avant de pouvoir ajouter un nouveau logo';
+					break;
+					case 'edit' :
+						var title = '&Eacute;diter la recette';
+						var arbo = document.getElementById('liste_recette_'+id+'_arborescence').value;
+						select_recette_img(document.getElementById('liste_recette_'+id+'_image').value);
+						document.getElementById('panel_recette_name').value = document.getElementById('liste_recette_'+id+'_name').value;
+						document.getElementById('panel_recette_code').value = document.getElementById('liste_recette_'+id+'_code').value;
+						document.getElementById('panel_recette_status_'+document.getElementById('liste_recette_'+id+'_status').value).selected = true;
+						document.getElementById('panel_recette_priorite').value = document.getElementById('liste_recette_'+id+'_priorite').value;
+						panelRecetteDescription.setValue(document.getElementById('liste_recette_'+id+'_description').value);
+						document.getElementById('panel_recette_info_preparation').value = document.getElementById('liste_recette_'+id+'_info_preparation').value;
+						document.getElementById('panel_recette_info_cuisson').value = document.getElementById('liste_recette_'+id+'_info_cuisson').value;
+						document.getElementById('panel_recette_info_nb_people').value = document.getElementById('liste_recette_'+id+'_info_nb_people').value;
+						document.getElementById('panel_recette_info_people_type').value = document.getElementById('liste_recette_'+id+'_info_people_type').value;
+						document.getElementById('panel_recette_info_complementaire').value = document.getElementById('liste_recette_'+id+'_info_complementaire').value;
+						panelRecetteDetailsPreparation.setValue(document.getElementById('liste_recette_'+id+'_details_preparation').value);
+						document.getElementById('panel_recette_credit').value = document.getElementById('liste_recette_'+id+'_credit').value;
+						
+						document.getElementById('panel_recette_button_add_produit').disabled = false;
+						document.getElementById('panel_recette_button_add_produit').title = 'Ajouter un nouvel ingredient';
+						document.getElementById('panel_recette_button_add_coupon').disabled = false;
+						document.getElementById('panel_recette_button_add_coupon').title = 'Ajouter un nouveau coupon';
+						document.getElementById('panel_recette_button_add_logo').disabled = false;
+						document.getElementById('panel_recette_button_add_logo').title = 'Ajouter un nouveau logo';
+					break;
+				}
+				try{
+				document.getElementById('panel_recette_arborescence').value = arbo;
+
+				document.getElementById('panel_recette_arborescence_name').innerHTML = document.getElementById('liste_rubrique_recette_details_'+arbo+'_name').value;
+				document.getElementById('panel_recette_arborescence_name').style.backgroundColor = document.getElementById('liste_rubrique_recette_details_'+arbo+'_backcolor').value;
+				document.getElementById('panel_recette_arborescence_name').style.color = document.getElementById('liste_rubrique_recette_details_'+arbo+'_fontcolor').value;
+				document.getElementById('panel_recette_arborescence_name').style.visibility = 'visible';
+				}catch(e){};
+				select_panel_recette_status();
+				panelRecette.setTitle(title);
+				panelRecette.show();
+				document.getElementById('panel_recette_description_panel').style.display = 'block';	
+				document.getElementById('panel_recette_details_preparation_panel').style.display = 'block';	
+			}
+			
+			function hide_panel_recette()
+			{				
+				document.getElementById('panel_recette_arborescence_name').style.visibility = 'hidden';				
+			
+				document.getElementById('panel_recette_description_panel').style.display = 'none';
+				document.getElementById('panel_recette_details_preparation_panel').style.display = 'none';			
+				
+				panelRecette.hide();
+				
+				hide_panel_recette_ingredient();
+				panelPickUpLogoCoupon.hide();
+				panelPickUpProduit.hide();
+			}
+			
+			function valide_panel_recette()
+			{
+				if(trim_str(document.getElementById('panel_recette_name').value)=='')
+				{
+					document.getElementById('panel_recette_name').focus();
+					alert('Vous devez preciser le nom de la recette');
+					return false;
+				}
+				if(trim_str(document.getElementById('panel_recette_code').value)=='')
+					document.getElementById('panel_recette_code').value = document.getElementById('panel_recette_name').value;
+				
+				if(!is_int(document.getElementById('panel_recette_priorite').value))
+				{
+					alert('La priorite d\'affichage de la recette doit etre un nombre valide');
+					return false;
+				}
+				if(!is_int(document.getElementById('panel_recette_info_nb_people').value))
+				{
+					alert('Le nombre de personnes doit etre un nombre valide');
+					return false;
+				}
+				
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							switch(http.responseText)
+							{
+								case "0" :
+									save_panel_recette();
+								break;
+								case "1" :
+									alert('Une recette avec le meme code existe deja. Enregistrement impossible.');
+								break;
+								default :
+									alert(http.responseText);
+								break;
+							}
+						}
+					}
+				};
+				var data='do=valide_panel_recette';
+				data += '&id=' + document.getElementById('panel_recette_id').value;
+				data += '&code=' + trim_str(document.getElementById('panel_recette_code').value);
+
+				http.send(data);
+			}
+			
+			function save_panel_recette()
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							else
+								hide_panel_recette();
+							get_liste_recette();
+						}
+					}
+				};
+				var data='do=save_panel_recette';
+				data += '&id=' + document.getElementById('panel_recette_id').value;
+				data += '&action=' + document.getElementById('panel_recette_action').value;
+				data += '&arbo=' + document.getElementById('panel_recette_arborescence').value;
+				data += '&code=' + trim_str(document.getElementById('panel_recette_code').value);
+				data += '&name=' + trim_str(document.getElementById('panel_recette_name').value);
+				data += '&status=' + document.getElementById('panel_recette_status').value;
+				data += '&priorite=' + document.getElementById('panel_recette_priorite').value;
+				data += '&description=' + trim_str(panelRecetteDescription.getValue());
+				data += '&info_preparation=' + trim_str(document.getElementById('panel_recette_info_preparation').value);
+				data += '&info_cuisson=' + trim_str(document.getElementById('panel_recette_info_cuisson').value);
+				data += '&info_nb_people=' + trim_str(document.getElementById('panel_recette_info_nb_people').value);
+				data += '&info_people_type=' + trim_str(document.getElementById('panel_recette_info_people_type').value);
+				data += '&info_complementaire=' + trim_str(document.getElementById('panel_recette_info_complementaire').value);
+				data += '&details_preparation=' + trim_str(panelRecetteDetailsPreparation.getValue());
+				data += '&credit=' + trim_str(document.getElementById('panel_recette_credit').value);
+				data += '&image=' + document.getElementById('panel_recette_img_src').value;
+				//alert(data);
+				http.send(data);
+			}
+			
+			function select_panel_recette_status()
+			{
+				switch(document.getElementById('panel_recette_status').value)
+				{
+					case "0" :
+						document.getElementById('panel_recette_status_img').src = '../images/accept.png';
+					break;
+					case "2" :
+						document.getElementById('panel_recette_status_img').src = '../images/delete.png';
+					break;
+				}
+			}
+			
+			function select_recette(product)
+			{
+				switch(document.getElementById('liste_recette_'+product+'_selected').value)
+				{
+					case "0" :
+						document.getElementById('liste_recette_'+product+'_select_img').style.border = 'solid 3px red';
+						document.getElementById('liste_recette_'+product+'_selected').value = "1";
+					break;
+					case "1" :
+						document.getElementById('liste_recette_'+product+'_select_img').style.border = '';
+						document.getElementById('liste_recette_'+product+'_selected').value = "0";
+					break;
+				}
+				
+				get_selected_recette();
+			}
+			
+			function get_selected_recette()
+			{
+				var count = 0;
+				var liste = '';
+				for(var i = 0; i < document.getElementById('liste_recette_count').value; i ++)
+				{
+					if(document.getElementById('liste_recette_'+i+'_selected').value == "1")
+					{
+						if(liste != '')
+							liste += ',';
+						liste += document.getElementById('liste_recette_'+i+'_id').value;
+						count ++;
+					}
+				}
+				
+				if(count == 0)
+				{
+					document.getElementById('button_move_recette').disabled = true;
+					document.getElementById('button_move_recette').style.cursor = 'default';
+					document.getElementById('button_move_recette').title = '';
+					
+					document.getElementById('button_delete_recette').disabled = true;
+					document.getElementById('button_delete_recette').style.cursor = 'default';
+					document.getElementById('button_delete_recette').title = '';				
+				}
+				else
+				{
+					document.getElementById('button_move_recette').disabled = false;
+					document.getElementById('button_move_recette').style.cursor = 'pointer';
+					document.getElementById('button_move_recette').title = 'Deplacer les recettes selectionnees';
+					
+					document.getElementById('button_delete_recette').disabled = false;
+					document.getElementById('button_delete_recette').style.cursor = 'pointer';
+					document.getElementById('button_delete_recette').title = 'Supprimer les recettes selectionnees';
+				}
+				
+				document.getElementById('liste_recette_selected').value = liste;
+			}
+			
+			function delete_liste_recette()
+			{
+				if(!confirm('Vous confirmez vouloir supprimer ces recettes ?'))
+				{
+					return false;
+				}
+				
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							get_liste_recette();
+						}
+					}
+				};
+				var data='do=delete_liste_recette';
+				data += '&id='+document.getElementById('liste_recette_selected').value;
+
+				http.send(data);
+			}
+			
+			function panel_pickup_logo_coupon(type)
+			{
+				document.getElementById('panel_pickup_logo_coupon_type').value = type;								
+
+				storePickUpLogoCoupon.proxy.url = 'admin_recette.php?do=get_pick_up_content&type='+type+'&recette='+document.getElementById('panel_recette_id').value;
+				storePickUpLogoCoupon.load();
+				storePickUpLogoCoupon.clearFilter();
+				
+				Ext.getCmp('filtre_pick_up_logo_coupon').setValue();
+				
+				panelPickUpLogoCoupon.setTitle('Choisir le '+type+' dans la liste - Cliquer pour s&eacute;lectionner');
+				panelPickUpLogoCoupon.show();
+			}
+			
+			function select_pick_up_logo_coupon(select)
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							get_recette_content( document.getElementById('panel_pickup_logo_coupon_type').value );
+							panelPickUpLogoCoupon.hide();
+						}
+					}
+				};
+				var data='do=add_new_logo_coupon';
+				data += '&id='+document.getElementById('panel_recette_id').value;
+				data += '&select='+select;
+				data += '&type='+document.getElementById('panel_pickup_logo_coupon_type').value;
+
+				http.send(data);
+			}
+			
+			function get_recette_content(type)
+			{
+				document.getElementById('panel_recette_'+type+'_content').innerHTML = '';
+				document.getElementById('panel_recette_'+type+'_content_div').style.backgroundColor = '#eee';
+				
+				if(document.getElementById('panel_recette_action').value == "new")
+					return false;
+			
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							document.getElementById('panel_recette_'+type+'_content').innerHTML = http.responseText;
+							document.getElementById('panel_recette_'+type+'_content_div').style.backgroundColor = 'white';
+						}
+					}
+				};
+				var data='do=get_recette_content';
+				data += '&id='+document.getElementById('panel_recette_id').value;
+				data += '&type='+type;
+
+				http.send(data);
+			}
+			
+			function delete_logo_coupon(type, id)
+			{
+				if(!confirm('Etes-vous certain de vouloir supprimer ce '+type+' ?'))
+					return false;
+				
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							get_recette_content(type);							
+						}
+					}
+				};
+				var data='do=delete_logo_coupon';
+				data += '&id='+id;
+				data += '&type='+type;
+
+				http.send(data);
+			}
+			
+			function move_logo_coupon(type, id, action)
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							get_recette_content(type);							
+						}
+					}
+				};
+				var data='do=move_logo_coupon';
+				data += '&id='+id;
+				data += '&type='+type;
+				data += '&action='+action;
+				data += '&recette='+document.getElementById('panel_recette_id').value;
+				
+				http.send(data);
+			}
+			
+			function survole_toolbar(display,id)
+			{
+				document.getElementById( id ).style.visibility = display;
+			}
+			
+			function edit_panel_recette_ingredient(action, id)
+			{
+				document.getElementById('panel_recette_ingredient_id').value = id;
+				document.getElementById('panel_recette_ingredient_action').value = action;
+				
+				var produit_id = 0;
+				switch(action)
+				{
+					case 'new' :
+						var title = 'Nouvel ingr&eacute;dient';
+						
+						document.getElementById('panel_recette_ingredient_categorie').value = '';
+						document.getElementById('panel_recette_ingredient_categorie_priorite').value = '0';
+						document.getElementById('panel_recette_ingredient_name').value = '';
+						document.getElementById('panel_recette_ingredient_priorite').value = '0';
+						
+						document.getElementById('panel_recette_ingredient_delete_button').disabled = true;
+					break;
+					case 'edit' :
+						var title = 'Modifier l\'ingr&eacute;dient';
+						
+						document.getElementById('panel_recette_ingredient_delete_button').disabled = false;
+						
+						document.getElementById('panel_recette_ingredient_categorie').value = document.getElementById('list_recette_ingredient_'+id+'_categorie').value;
+						document.getElementById('panel_recette_ingredient_categorie_priorite').value = document.getElementById('list_recette_ingredient_'+id+'_categorie_priorite').value;
+						document.getElementById('panel_recette_ingredient_name').value = document.getElementById('list_recette_ingredient_'+id+'_name').value;
+						document.getElementById('panel_recette_ingredient_priorite').value = document.getElementById('list_recette_ingredient_'+id+'_priorite').value;
+						
+						produit_id = document.getElementById('list_recette_ingredient_'+id+'_produit').value;
+					break;
+				}
+				select_pick_up_produit( produit_id );
+				
+				panelRecetteIngredient.setTitle(title);
+				panelRecetteIngredient.show();
+			}
+			
+			function valide_panel_recette_ingredient()
+			{
+				if(trim_str(document.getElementById('panel_recette_ingredient_name').value)=='')
+				{
+					document.getElementById('panel_recette_ingredient_name').focus();
+					alert('Vous devez detailler l\'ingredient');
+					return false;
+				}				
+				if(!is_int(document.getElementById('panel_recette_ingredient_priorite').value))
+				{
+					alert('La priorite d\'affichage du produit doit etre un nombre valide');
+					return false;
+				}
+				if(!is_int(document.getElementById('panel_recette_ingredient_categorie_priorite').value))
+				{
+					alert('La priorite d\'affichage de la categorie doit etre un nombre valide');
+					return false;
+				}
+				
+				save_panel_recette_ingredient();
+			}
+			
+			function save_panel_recette_ingredient()
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							else
+								hide_panel_recette_ingredient();
+							get_recette_content('ingredient');							
+						}
+					}
+				};
+				var data='do=save_panel_recette_ingredient';
+				data += '&id='+document.getElementById('panel_recette_ingredient_id').value;
+				data += '&action='+document.getElementById('panel_recette_ingredient_action').value;
+				data += '&recette='+document.getElementById('panel_recette_id').value;
+				data += '&categorie='+trim_str(document.getElementById('panel_recette_ingredient_categorie').value);
+				data += '&categorie_priorite='+document.getElementById('panel_recette_ingredient_categorie_priorite').value;
+				data += '&name='+trim_str(document.getElementById('panel_recette_ingredient_name').value);
+				data += '&priorite='+document.getElementById('panel_recette_ingredient_priorite').value;
+				data += '&produit='+document.getElementById('panel_recette_ingredient_produit_id').value;
+
+				http.send(data);
+			}
+			
+			function hide_panel_recette_ingredient()
+			{
+				panelRecetteIngredient.hide();
+				
+				panelPickUpProduit.hide();
+			}
+			
+			function survole_list_recette_ingredient(action,id)
+			{
+				switch(action)
+				{
+					case 'over' :
+						document.getElementById('list_recette_ingredient_'+id+'_row').style.color = '#5DB0E8';
+					break;
+					case 'out' :
+						document.getElementById('list_recette_ingredient_'+id+'_row').style.color = '#666';
+					break;
+				}
+			}
+			
+			function get_list_produit()
+			{
+				var id = 0;
+				var i = 0;
+				try{
+					while(1)
+					{
+						if(document.getElementById('select_rubrique_recette_produit_range_'+i).value != '0')
+							id = document.getElementById('select_rubrique_recette_produit_range_'+i).value;
+						i ++;
+					}
+				}catch(e){}
+				
+				storePickUpProduit.proxy.url = 'admin_recette.php?do=get_pick_up_content&type=produit&arbo='+id;
+				storePickUpProduit.load();
+			}
+			
+			function panel_pickup_produit()
+			{					
+				panelPickUpProduit.show();
+			}			
+			
+			function search_pickup_produit()
+			{
+				storePickUpProduit.clearFilter();			
+				var filtre = Ext.getCmp('filtre_pick_up_produit').getValue();
+				if(filtre != '')
+				{
+					var regexp = new RegExp(filtre.toLowerCase());
+					storePickUpProduit.filter('name',regexp);
+				}
+			}
+			
+			function select_pick_up_produit(id)
+			{
+				document.getElementById('panel_recette_ingredient_produit_delete_button').style.display = 'none';
+			
+				var http = createRequestObject();
+				http.open('POST', 'admin_produit.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							document.getElementById('panel_recette_ingredient_produit_info_content').innerHTML = http.responseText;		
+
+							document.getElementById('panel_recette_ingredient_produit_id').value = document.getElementById('produit_info_id').value;
+							document.getElementById('panel_recette_ingredient_produit_name').innerHTML = document.getElementById('produit_info_name').value;
+							document.getElementById('panel_recette_ingredient_produit_img').src = document.getElementById('produit_info_img').value;
+							
+							if(document.getElementById('produit_info_id').value != "0")
+								document.getElementById('panel_recette_ingredient_produit_delete_button').style.display = 'block';
+							
+							panelPickUpProduit.hide();
+						}
+					}
+				};
+				var data='do=get_produit_info';
+				data += '&id='+id;
+
+				http.send(data);
+			}
+			
+			function delete_panel_recette_ingredient()
+			{
+				if(!confirm('Vous confirmez vouloir supprimer cet ingredient ?'))
+					return false;
+					
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							else
+								hide_panel_recette_ingredient();
+							get_recette_content('ingredient');
+						}
+					}
+				};
+				var data='do=delete_panel_recette_ingredient';
+				data += '&id='+document.getElementById('panel_recette_ingredient_id').value;
+
+				http.send(data);
+			}
+			
+			function move_recette()
+			{
+				panelMoveRecette.show();
+			}
+			
+			function valide_panel_move_recette()
+			{
+				if(document.getElementById('liste_recette_selected').value == '')
+				{
+					alert('Vous devez selectionner au moins une recette a deplacer');
+					return false;
+				}
+				
+				var id = 0;
+				var i = 0;
+				try{
+					while(1)
+					{
+						if(document.getElementById('select_rubrique_recette_move_range_'+i).value != '0')
+							id = document.getElementById('select_rubrique_recette_move_range_'+i).value;
+						i ++;
+					}
+				}catch(e){}
+				
+				if(id == 0)
+				{
+					alert('Vous devez selectionner une rubrique');
+					return false;
+				}
+				
+				var http = createRequestObject();
+				http.open('POST', 'admin_recette.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							else
+								hide_panel_move_recette();
+							get_liste_recette();
+						}
+					}
+				};
+				var data='do=valide_panel_move_recette';
+				data += '&liste='+document.getElementById('liste_recette_selected').value;
+				data += '&rubrique='+id;
+				
+				http.send(data);
+			}
+			
+			function hide_panel_move_recette()
+			{
+				panelMoveRecette.hide();
+			}
+			
+			function sort_recette()
+			{
+				switch(document.getElementById('sort_recette_type').value)
+				{
+					case 'asc' :
+						document.getElementById('sort_recette_type').value = 'desc';
+						document.getElementById('sort_recette_image').src = '../images/arrow_down.png';
+						document.getElementById('sort_recette_image').title = 'Tri decroissant';
+					break;
+					case 'desc' :
+						document.getElementById('sort_recette_type').value = 'asc';
+						document.getElementById('sort_recette_image').src = '../images/arrow_up.png';
+						document.getElementById('sort_recette_image').title = 'Tri croissant';
+					break;
+				}
+				
+				get_liste_recette();
+			}
+			
+			function export_liste()
+			{
+				window.location = "../export/export.php?do=export&type=recette";
+			}
+			
+			function import_liste()
+			{
+				window.open("../export/import.php?do=import&type=recette",
+							"Import",
+							"menubar=no, status=no, scrollbars=no, menubar=no, width=500px, height=350px,left = 0, top = 0");
+			}
+			
+			function check_filtre_recette_photo(action)
+			{
+				if(action)
+				{
+					if(document.getElementById('filtre_recette_photo').checked)
+						document.getElementById('filtre_recette_photo').checked = false;
+					else
+						document.getElementById('filtre_recette_photo').checked = true;
+				}
+				
+				get_liste_recette();
+			}
+			
+			
+			
+			window.onload = function()
+			{
+					
+			}
+		</script>
+	</head>
+	<body onclick="hide_ajax_search_panel();">
+		<div id="toolbar" class="toolbar">
+			<table>
+				<tr>
+					<td>
+						<img src="../images/basket.png"></img>
+					</td>
+					<td>
+						<div class="toolbar_label" style="margin-left:3px;">Gestion des recettes</div>
+					</td>
+					<td>
+						<div id="rubrique_content" style="margin-left:5px;">
+							<input type="hidden" id="select_rubrique_recette_value" value="0"></input>
+						</div>
+					</td>
+					<td>
+						<div class="toolbar_label"></div>	
+					</td>
+					<td>
+						<button id="button_add_new_recette" onclick="edit_panel_recette('new',0);" style="margin-left:15px;">
+							<img src="../images/add.png"></img>
+						</button>
+					</td>
+					<td>
+						<button id="button_move_recette" onclick="move_recette();">
+							<img src="../images/folder_go.png"></img>
+						</button>
+					</td>
+					<td>
+						<button onclick="delete_liste_recette();" id="button_delete_recette" onclick="">
+							<img src="../images/trash.png"></img>
+						</button>
+					</td>
+					<td class="toolbar_label" style="padding-left:10px;padding-right:5px;">Rechercher</td>
+					<td>
+						<input onkeyup="ajax_search_name(event,'recette');" type="text" class="toolbar_text" id="search_recette"></input>
+						<div id="ajax_search_panel" style="z-index:10000;visibility:hidden;position:absolute;" class="ajax_search_box">
+							<div id="ajax_search_result"></div>
+							<input type="hidden" id="ajax_search_type"></input>
+						</div>	
+					</td>
+					<td class="toolbar_label" style="padding-left:10px;padding-right:5px;">Ranger par</td>
+					<td>
+						<select onchange="get_liste_recette();" class="toolbar_select" id="sort_recette">
+							<option selected value="priorite">priorit&eacute;</option>
+							<option value="name">nom recette</option>
+						</select>
+					</td>
+					<td>
+						<img title="Tri croissant" onclick="sort_recette();" style="cursor:pointer;" src="../images/arrow_up.png" id="sort_recette_image"></img>
+						<input type="hidden" id="sort_recette_type" value="asc"></input>
+					</td>
+					<td>
+						<input onchange="check_filtre_recette_photo(false);" id="filtre_recette_photo" title="Filtrer les recettes sans photos" type="checkbox" style="margin-left:10px;"></input>
+					</td>
+					<td>
+						<img onclick="check_filtre_recette_photo(true);" title="Filtrer les recettes sans photos" style="margin-left:5px;" src="../images/camera_error.png"></img>
+					</td>
+					<td>
+						<button style="margin-left:15px;" onclick="export_liste();" title="Extraire la liste des recette au format XLSX"><img src="../images/page_excel.png"></img></button>
+					</td>
+					<td>
+						<button onclick="import_liste();" title="D&eacute;finir la liste des recettes &agrave; partir d'un fichier XLSX"><img src="../images/page_go.png"></img></button>
+					</td>
+					<td>
+						<button style="margin-left:10px;" onclick="go_to_page('first');" title=""><img src="../images/control_start_blue.png"></img></button>
+					</td>
+					<td>
+						<button onclick="go_to_page('previous');" title=""><img src="../images/control_previous_blue.png"></img></button>
+					</td>
+					<td class="toolbar_label" style="padding-left:10px;" id="toolbar_info_page_content"></td>
+					<td>
+						<button style="margin-left:10px;" onclick="go_to_page('next');" title=""><img src="../images/control_play_blue.png"></img></button>
+					</td>
+					<td>
+						<button onclick="go_to_page('last');" title=""><img src="../images/control_end_blue.png"></img></button>
+					</td>
+					<td>
+						<button style="margin-left:10px;" onclick="get_liste_recette();" title="Rafraichir la liste de recettes"><img src="../images/arrow_refresh.png"></img></button>
+					</td>
+					<td style="padding-left:10px;" class="toolbar_label" id="toolbar_info_nb_result_content"></td>
+				</tr>
+			</table>
+		</div>	
+		<input type="hidden" id="toolbar_info_current_page_content" value="0"></input>
+		<input type="hidden" id="toolbar_info_max_page_content" value="0"></input>
+		<input type="hidden" id="toolbar_info_current_sql_content" value=""></input>
+		<div align="center" id="liste_recette_content"></div>
+		<input type="hidden" id="liste_recette_selected"></input>
+		<div style="visibility:hidden;">
+			<div id="panel_recette" class="panel">
+				<table>
+					<tr>
+						<td>
+							<table cellspacing="4px">
+								<tr>
+									<td align="right">
+										<img src="../images/arrow_sub.png"></img>
+									</td>
+									<td class="panel_label">
+										Rubrique
+									</td>
+									<td colspan="2">
+										<div id="panel_recette_arborescence_name" class="arbo_name"></div>
+									</td>
+								</tr>
+								<tr>
+									<td class="panel_label" colspan="2">
+										Nom
+									</td>
+									<td colspan="2">
+										<input type="text" id="panel_recette_name" class="panel_text"></input>
+									</td>
+									<td rowspan="2" colspan="2" align="center">
+										<div class="boutique_img_picker" title="Cliquer pour modifier l'illustration" onclick="show_panel_pick_up_img_recette();">
+											<img id="panel_recette_img" src="" class="product_img"></img>
+											<input type="hidden" id="panel_recette_img_src"></input>
+										</div>
+									</td>
+								</tr>
+								<tr>
+									<td class="panel_label" colspan="2">
+										Code
+									</td>
+									<td colspan="2">
+										<input type="text" id="panel_recette_code" class="panel_text"></input>
+									</td>
+								</tr>
+								<tr>
+									<td class="panel_label" colspan="2">
+										Statut
+									</td>
+									<td>
+										<select id="panel_recette_status" class="panel_select" onchange="select_panel_recette_status()">
+											<option id="panel_recette_status_0" value="0">Actif</option>
+											<option id="panel_recette_status_2" value="2">D&eacute;sactiv&eacute;</option>
+										</select>
+									</td>
+									<td>
+										<img src="" id="panel_recette_status_img"></img>
+									</td>
+									<td class="panel_label">
+										Priorit&eacute; d'affichage
+									</td>						
+									<td>
+										<input type="text" id="panel_recette_priorite" class="panel_text" style="width:50px;"></input>
+									</td>
+								</tr>			
+							</table>
+							<div id="panel_recette_description_panel" style="padding:5px;">
+								<div id="panel_recette_description"></div>
+							</div>
+							<div class="panel_preparation">								
+								<table>
+									<tr>
+										<td colspan="3">
+											<span class="panel_preparation_title"></span>
+										<td>
+										<td class="panel_label">
+											<span style="margin-left:10px;">Pr&eacute;paration</span>
+										</td>
+										<td>
+											<input type="text" id="panel_recette_info_preparation" class="panel_text" style="width:80px;"></input>
+										</td>
+										<td class="panel_label">
+											Cuisson
+										</td>
+										<td>
+											<input type="text" id="panel_recette_info_cuisson" class="panel_text" style="width:80px;"></input>
+										</td>
+									</tr>
+									<tr>
+										<td>
+											<img src="../images/group.png" title="Nombre de personnes"></img>
+										</td>										
+										<td>
+											<input type="text" id="panel_recette_info_nb_people" class="panel_text" style="width:30px;"></input>
+										</td>
+										<td>
+											<input type="text" id="panel_recette_info_people_type" class="panel_text" style="width:80px;"></input>
+										</td>
+										<td class="panel_label" colspan="3">
+											Information compl&eacute;mentaire
+										</td>
+										<td colspan="2">
+											<input type="text" id="panel_recette_info_complementaire" class="panel_text" style="width:120px;"></input>
+										</td>
+									</tr>
+								</table>
+								<div id="panel_recette_details_preparation_panel" style="padding:5px;">
+									<div id="panel_recette_details_preparation"></div>
+								</div>
+								<table>
+									<tr>
+										<td class="panel_label">
+											<span>Cr&eacute;dits</span>
+										<td>
+										<td>
+											<input type="text" id="panel_recette_credit" class="panel_text" style="margin-left:10px;width:300px;"></input>
+										</td>
+									</tr>
+								</table>
+							</div>
+						</td>
+						<td style="padding-left:10px;">
+							<div class="panel_preparation panel_prep_right" id="panel_recette_ingredient_content_div">								
+								<table>
+									<tr>
+										<td>
+											<span class="panel_preparation_title">Ingr&eacute;dients</span>
+										<td>
+										<td class="panel_label">
+											<button id="panel_recette_button_add_produit" onclick="edit_panel_recette_ingredient('new','0');"><img src="../images/add.png"><!--Nouvel ingr&eacute;dient--></img></button>
+										</td>
+									</tr>
+								</table>
+								<div class="panel_recette_content" id="panel_recette_ingredient_content" style="overflow-x:none;overflow-y:scroll;">								
+								</div>
+							</div>
+							<div class="panel_preparation panel_prep_right" id="panel_recette_coupon_content_div">								
+								<table>
+									<tr>
+										<td>
+											<span class="panel_preparation_title">Coupons</span>
+										<td>
+										<td class="panel_label">
+											<button id="panel_recette_button_add_coupon" onclick="panel_pickup_logo_coupon('coupon');"><img src="../images/add.png"><!--Nouvel ingr&eacute;dient--></img></button>
+										</td>
+									</tr>
+								</table>
+								<div class="panel_recette_content" id="panel_recette_coupon_content">								
+								</div>
+							</div>
+							<div class="panel_preparation panel_prep_right" id="panel_recette_logo_content_div">								
+								<table>
+									<tr>
+										<td>
+											<span class="panel_preparation_title">Logos</span>
+										<td>
+										<td class="panel_label">
+											<button id="panel_recette_button_add_logo" onclick="panel_pickup_logo_coupon('logo');"><img src="../images/add.png"><!--Nouvel ingr&eacute;dient--></img></button>
+										</td>
+									</tr>
+								</table>
+								<div class="panel_recette_content" id="panel_recette_logo_content">								
+								</div>
+							</div>
+						</td>
+					</tr>
+				</table>
+				<div align="center" style="margin-top:10px;">
+					<table>
+						<tr>
+							<td>
+								<button onclick="valide_panel_recette();">Valider</button>
+							</td>
+							<td>
+								<button onclick="hide_panel_recette();">Annuler</button>
+							</td>
+						</tr>
+					</table>
+				</div>
+				<input type="hidden" id="panel_recette_id"></input>
+				<input type="hidden" id="panel_recette_action"></input>
+				<input type="hidden" id="panel_recette_arborescence"></input>
+			</div>
+		</div>
+		<div style="visibility:hidden;">
+			<div id="panel_recette_ingredient" class="panel">
+				<table cellspacing="4px">
+					<tr>
+						<td class="panel_label">
+							Cat&eacute;gorie
+						</td>
+						<td>
+							<input type="text" id="panel_recette_ingredient_categorie_priorite" class="panel_text" style="width:50px;"></input>
+						</td>
+						<td style="padding-left:10px;">
+							<input type="text" id="panel_recette_ingredient_categorie" class="panel_text"></input>
+						</td>
+						<td rowspan="3" align="center">
+							<div class="boutique_img_picker" title="Cliquer pour selectionner le produit" onclick="panel_pickup_produit();">
+								<img id="panel_recette_ingredient_produit_img" src="" class="product_img"></img>
+								<input type="hidden" id="panel_recette_ingredient_produit_id"></input>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="panel_label">
+							D&eacute;tails
+						</td>
+						<td colspan="2">
+							<input type="text" id="panel_recette_ingredient_name" class="panel_text" style="text-align:left;width:200px;"></input>
+						</td>
+					</tr>
+					<tr>
+						<td class="panel_label">
+							Produit associ&eacute;
+						</td>
+						<td style="width:50px;">
+							<img id="panel_recette_ingredient_produit_delete_button" style="display:none;" src="../images/delete.png" onclick="select_pick_up_produit('0');" style="cursor:pointer;" title="Supprimer le produit s&eacute;lectionn&eacute;"></img>
+						</td>						
+						<td>
+							<div class="product_name" id="panel_recette_ingredient_produit_name"></div>
+						</td>
+					</tr>
+					<tr>
+						<td class="panel_label">
+							Priorit&eacute; d'affichage
+						</td>
+						<td colspan="2">
+							<input type="text" id="panel_recette_ingredient_priorite" class="panel_text" style="width:50px;"></input>
+						</td>
+					</tr>
+				</table>
+				<div align="center" style="margin-top:10px;">
+					<table>
+						<tr>
+							<td>
+								<button onclick="valide_panel_recette_ingredient();">Valider</button>
+							</td>
+							<td>
+								<button id="panel_recette_ingredient_delete_button" onclick="delete_panel_recette_ingredient();">Supprimer</button>
+							</td>
+							<td>
+								<button onclick="hide_panel_recette_ingredient();">Annuler</button>
+							</td>
+						</tr>
+					</table>
+				</div>
+				<input type="hidden" id="panel_recette_ingredient_id"></input>
+				<input type="hidden" id="panel_recette_ingredient_action"></input>
+				<div style="display:none;" id="panel_recette_ingredient_produit_info_content"></div>
+			</div>
+		</div>
+		<div style="visibility:hidden;">
+			<div id="panel_pick_up_img_recette" class="panel" style="padding:0;">
+				<div id="pick_up_img_recette_content"></div>
+			</div>
+		</div>
+		<div style="visibility:hidden;">
+			<div id="panel_pickup_logo_coupon" class="panel" style="padding:0;">
+				<div id="panel_pickup_logo_coupon_content"></div>
+			</div>
+			<input type="hidden" id="panel_pickup_logo_coupon_type" value=""></input>			
+		</div>
+		<div style="visibility:hidden;">
+			<div id="panel_move_recette" class="panel" style="padding:0;">
+				<div id="rubrique_content_move" style="padding:20px;height:75px;"></div>
+				<div align="center">
+					<table>
+						<tr>
+							<td><button onclick="valide_panel_move_recette();">Valider</button></td>
+							<td><button onclick="hide_panel_move_recette();">Annuler</button></td>
+						</tr>
+					</table>
+				</div>
+			</div>			
+		</div>
+		<div style="visibility:hidden;">
+			<div id="panel_pickup_produit" class="panel" style="padding:0;">
+				<div id="toolbar_produit" class="toolbar">
+					<table>
+						<tr>
+							<td>
+								<div id="rubrique_produit_content" style="margin-left:5px;">
+									<input type="hidden" id="select_rubrique_recette_produit_value" value="0"></input>
+								</div>
+							</td>
+						</tr>
+					</table>
+				</div>
+				<div id="panel_pickup_produit_content"></div>
+			</div>		
+		</div>	
+	</body>
+</html>

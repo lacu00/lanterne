@@ -1,0 +1,305 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" type="text/css" href="../include/main.css" />
+		<script type="text/javascript" src="../include/main.js"></script>
+
+		<!--<script src="../include/jquery-1.4.4.min.js" type="text/javascript"></script>-->
+		
+		<link rel="stylesheet" type="text/css" href="../include/ext/resources/css/ext-all.css"/>
+		<link rel="stylesheet" type="text/css" href="../include/data-view.css"/>		
+		<script type="text/javascript" src="../include/ext/ext-all.js"></script>
+		
+		<style>
+			table { margin:20px;background-color:white;border-color:#ddd; }
+			td { padding:10px; }
+			input { width:250px;text-align:-moz-center;text-align:center; }
+			.path { color:#aaa; }
+		</style>
+		
+		<script>		
+			Ext.onReady(function(){
+			
+				Ext.QuickTips.init();
+				
+				myInputTextHtml_lanterne = Ext.extend(Ext.form.HtmlEditor, {
+					initComponent:function() {
+						config = {
+							xtype:'htmleditor',
+							fieldLabel:'',
+							height:120,
+							width:210,
+							enableSourceEdit:false,
+							enableLinks:false,
+							enableAlignments:false
+						};
+						Ext.apply(this, Ext.apply(this.initialConfig, config)); 
+						myInputTextHtml_lanterne.superclass.initComponent.apply(this, arguments); 
+					}
+				});
+				
+				panelTextLanterne = new myInputTextHtml_lanterne();
+				panelTextLanterne.render('panel_text_lanterne');
+				
+				myInputTextHtml_partenaire = Ext.extend(Ext.form.HtmlEditor, {
+					initComponent:function() {
+						config = {
+							xtype:'htmleditor',
+							fieldLabel:'',
+							height:220,
+							width:400,
+							enableSourceEdit:false,
+							enableLinks:false,
+							enableAlignments:false
+						};
+						Ext.apply(this, Ext.apply(this.initialConfig, config)); 
+						myInputTextHtml_partenaire.superclass.initComponent.apply(this, arguments); 
+					}
+				});
+				
+				panelTextPartenaire = new myInputTextHtml_partenaire();
+				panelTextPartenaire.render('panel_text_partenaire');
+			});
+			
+			function createRequestObject()
+			{
+				var http;
+				if(window.XMLHttpRequest)
+				{ // Mozilla, Safari, ...
+					http = new XMLHttpRequest();
+				}
+				else if(window.ActiveXObject)
+				{ // Internet Explorer
+					http = new ActiveXObject("Microsoft.XMLHTTP");
+				}
+				return http;
+			}
+			
+			function save_content()
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_content.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							else
+								alert('Modifications enregistrees');
+							get_content();
+						}
+					}
+				};
+				var data='do=save_content';
+				data += '&logo_accueil=' + trim_str(document.getElementById('panel_logo_accueil').value);
+				data += '&logo_lanterne=' + trim_str(document.getElementById('panel_logo_lanterne').value);
+				data += '&text_lanterne=' + trim_str(panelTextLanterne.getValue());
+				data += '&logo_partenaire=' + trim_str(document.getElementById('panel_logo_partenaire').value);
+				data += '&text_partenaire=' + trim_str(panelTextPartenaire.getValue());
+				
+				data += '&conf_path_images=' + trim_str(document.getElementById('conf_path_images').value);
+				
+				data += '&conf_bdd_host=' + trim_str(document.getElementById('conf_bdd_host').value);
+				data += '&conf_bdd_login=' + trim_str(document.getElementById('conf_bdd_login').value);
+				data += '&conf_bdd_mdp=' + trim_str(document.getElementById('conf_bdd_mdp').value);
+				data += '&conf_bdd_name=' + trim_str(document.getElementById('conf_bdd_name').value);
+				
+				data += '&conf_borne_ttl=' + trim_str(document.getElementById('conf_borne_ttl').value);
+				data += '&conf_borne_lig=' + trim_str(document.getElementById('conf_borne_lig').value);
+				data += '&conf_borne_col=' + trim_str(document.getElementById('conf_borne_col').value);
+				data += '&conf_borne_rdm=' + trim_str(document.getElementById('conf_borne_rdm').value);
+				
+				data += '&conf_boutique_lig=' + trim_str(document.getElementById('conf_boutique_lig').value);
+				data += '&conf_boutique_col=' + trim_str(document.getElementById('conf_boutique_col').value);
+				//alert(data);
+				http.send(data);
+			}
+			
+			function get_content()
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_content.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							document.getElementById("panel_content").innerHTML = http.responseText;
+
+							document.getElementById('panel_logo_accueil').value = document.getElementById('content_logo_accueil').value;							
+							document.getElementById('panel_logo_lanterne').value = document.getElementById('content_logo_lanterne').value;
+							panelTextLanterne.setValue(document.getElementById('content_text_lanterne').value);
+							document.getElementById('panel_logo_partenaire').value = document.getElementById('content_logo_partenaire').value;
+							panelTextPartenaire.setValue(document.getElementById('content_text_partenaire').value);
+							
+							document.getElementById('conf_path_images').value = document.getElementById('content_conf_path_images').value;
+							
+							document.getElementById('conf_bdd_host').value = document.getElementById('content_conf_bdd_host').value;
+							document.getElementById('conf_bdd_login').value = document.getElementById('content_conf_bdd_login').value;
+							document.getElementById('conf_bdd_mdp').value = document.getElementById('content_conf_bdd_mdp').value;
+							document.getElementById('conf_bdd_name').value = document.getElementById('content_conf_bdd_name').value;
+							
+							document.getElementById('conf_borne_ttl').value = document.getElementById('content_conf_borne_ttl').value;
+							document.getElementById('conf_borne_lig').value = document.getElementById('content_conf_borne_lig').value;
+							document.getElementById('conf_borne_col').value = document.getElementById('content_conf_borne_col').value;
+							document.getElementById('conf_borne_rdm').value = document.getElementById('content_conf_borne_rdm').value;
+							
+							document.getElementById('conf_boutique_lig').value = document.getElementById('content_conf_boutique_lig').value;
+							document.getElementById('conf_boutique_col').value = document.getElementById('content_conf_boutique_col').value;
+						}
+					}
+				};
+				var data='do=get_content';
+				//alert(data);
+				http.send(data);
+			}
+			
+			window.onload = function()
+			{
+				get_content();	
+			}
+		</script>
+	</head>
+	<body>
+		<table border="0">
+			<tr>
+				<td valign="top">
+					<table border="1">
+						<tr>
+							<td>Image Accueil</td>
+							<td><span class="path">(FTP)/contenu/</span><input id="panel_logo_accueil" type="text"></input></td>
+						</tr>
+						<tr>
+							<td>Image Lanterne</td>
+							<td><span class="path">(FTP)/contenu/</span><input id="panel_logo_lanterne" type="text"></input></td>
+						</tr>
+						<tr>
+							<td>Texte Lanterne</td>
+							<td id="panel_text_lanterne"></td>
+						</tr>
+						<tr>
+							<td>Image Partenaire</td>
+							<td><span class="path">(FTP)/contenu/</span><input id="panel_logo_partenaire" type="text"></input></td>
+						</tr>
+						<tr>
+							<td>Texte Partenaire</td>
+							<td id="panel_text_partenaire"></td>
+						</tr>
+					</table>
+					<div id="panel_content"></div>
+				</td>
+				<td valign="top">
+					<table border="1">
+						<tr>
+							<td>
+								Conf
+							</td>
+							<td>
+								Images
+							</td>
+							<td>
+								<input type="text" id="conf_path_images"></input>
+							</td>
+						</tr>
+						<tr>
+							<td rowspan="4">
+								BDD
+							</td>
+							<td>
+								Host
+							</td>
+							<td>
+								<input type="text" id="conf_bdd_host"></input>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Login
+							</td>
+							<td>
+								<input type="text" id="conf_bdd_login"></input>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Mdp
+							</td>
+							<td>
+								<input type="text" id="conf_bdd_mdp"></input>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Name
+							</td>
+							<td>
+								<input type="text" id="conf_bdd_name"></input>
+							</td>
+						</tr>
+						<tr>
+							<td rowspan="4">
+								Borne
+							</td>
+							<td>
+								Refresh (s)
+							</td>
+							<td>
+								<input type="text" id="conf_borne_ttl"></input>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Nb lignes
+							</td>
+							<td>
+								<input type="text" id="conf_borne_lig"></input>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Nb cols
+							</td>
+							<td>
+								<input type="text" id="conf_borne_col"></input>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Nb random
+							</td>
+							<td>
+								<input type="text" id="conf_borne_rdm"></input>
+							</td>
+						</tr>
+						<tr>
+							<td rowspan="2">
+								Boutique
+							</td>
+							<td>
+								Nb lignes
+							</td>
+							<td>
+								<input type="text" id="conf_boutique_lig"></input>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Nb cols
+							</td>
+							<td>
+								<input type="text" id="conf_boutique_col"></input>
+							</td>
+						</tr>
+						<tr>
+							<td colspan="3" align="center"><button onclick="save_content();">Enregistrer</button></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>	
+	</body>
+</html>

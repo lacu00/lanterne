@@ -1,0 +1,153 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" type="text/css" href="../include/main.css" />
+		<script type="text/javascript" src="../include/main.js"></script>
+
+		<!--<script src="../include/jquery-1.4.4.min.js" type="text/javascript"></script>-->
+		
+		<link rel="stylesheet" type="text/css" href="../include/ext/resources/css/ext-all.css"/>
+		<script type="text/javascript" src="../include/ext/ext-all.js"></script>
+		
+		<style>
+			.td { text-align:-moz-center;text-align:center;background-color:#eef;font-size:12px;padding:0px 3px 0px 3px;margin:1px;
+					border-right:outset 1px #aaa;
+					border-bottom:outset 1px #aaa;
+					border-left:solid 1px #ccc;
+					border-top:solid 1px #ccc;}
+		</style>
+		
+		<script>		
+			Ext.onReady(function(){
+			
+				Ext.QuickTips.init();
+				
+				var dateMenuFrom = new Ext.menu.DatePicker({
+					handler: function(dp, date){
+						Ext.getCmp("borne_debut").setValue( Ext.Date.format(date, 'd/m/Y') );
+					}
+				});
+				
+				var dateMenuTo = new Ext.menu.DatePicker({
+					handler: function(dp, date){
+						Ext.getCmp("borne_fin").setValue( Ext.Date.format(date, 'd/m/Y') );
+					}
+				});
+				
+				var tb = new Ext.Toolbar();
+				tb.render('toolbar');				
+				tb.add(
+					'Compteurs',
+					'-',
+					{
+						text: 'Du',
+						icon: '../images/calendar.png',
+						iconCls: 'calendar',
+						menu: dateMenuFrom // <-- submenu by reference
+				   },
+				   {
+						xtype: 'textfield',
+						width:	100,
+						id: 'borne_debut',
+						readOnly : true
+				   },
+				   '-',
+				   {
+						text: 'Au',
+						icon: '../images/calendar.png',
+						iconCls: 'calendar',
+						menu: dateMenuTo // <-- submenu by reference
+				   },
+				   {
+						xtype: 'textfield',
+						width:	100,
+						id: 'borne_fin',
+						readOnly : true
+				   },
+					'|',
+					{
+						text: 'Actualiser',
+						icon: '../images/arrow_refresh.png',
+						handler: function(){ refresh(); }
+					},
+					'|',
+					{
+						text: 'Exporter',
+						icon: '../images/page_excel.png',
+						handler: function(){ export_liste(); }
+					}
+				);
+				
+				tb.doLayout();
+				
+				Ext.getCmp("borne_debut").readOnly = true;
+				Ext.getCmp("borne_fin").readOnly = true;
+				
+				var date = new Date();
+				date.setTime( date.getTime() );
+				
+				var year = date.getFullYear();
+				var month = date.getMonth();
+				var day = date.getDate();
+				
+				month ++;
+				if(month < 10)	month = "0"+month;
+				if(day < 10)	day = "0"+day;
+				
+				Ext.getCmp("borne_debut").setValue( '01/'+month+'/'+year );
+				Ext.getCmp("borne_fin").setValue( day + '/' + month + '/' + year );
+				
+				refresh();
+			});
+			
+			function createRequestObject()
+			{
+				var http;
+				if(window.XMLHttpRequest)
+				{ // Mozilla, Safari, ...
+					http = new XMLHttpRequest();
+				}
+				else if(window.ActiveXObject)
+				{ // Internet Explorer
+					http = new ActiveXObject("Microsoft.XMLHTTP");
+				}
+				return http;
+			}	
+			
+			function refresh()
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_log.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							document.getElementById('log_content').innerHTML = http.responseText;
+						}
+					}
+				};
+				var data='do=refresh';
+				data += '&date_deb=' + Ext.getCmp('borne_debut').getValue();
+				data += '&date_fin=' + Ext.getCmp('borne_fin').getValue();
+
+				http.send(data);
+			}
+			
+			function export_liste()
+			{
+				window.location = 'admin_log.php?do=export_liste&date_deb='+Ext.getCmp('borne_debut').getValue()+'&date_fin='+Ext.getCmp('borne_fin').getValue();
+			}
+			
+			window.onload = function()
+			{
+				document.getElementById('log_content').style.height = (document.body.clientHeight - 50) + "px";
+			}
+		</script>
+	</head>
+	<body>
+		<div id="toolbar"></div>
+		<div id="log_content" style="overflow-y:auto;"></div>
+	</body>
+</html>

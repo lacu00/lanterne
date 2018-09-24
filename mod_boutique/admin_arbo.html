@@ -1,0 +1,771 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="stylesheet" type="text/css" href="../include/main.css" />
+		<script type="text/javascript" src="../include/main.js"></script>
+
+		<!--<script src="../include/jquery-1.4.4.min.js" type="text/javascript"></script>-->
+		
+		<link rel="stylesheet" type="text/css" href="../include/ext/resources/css/ext-all.css"/>
+		<link rel="stylesheet" type="text/css" href="../include/data-view.css"/>		
+		<script type="text/javascript" src="../include/ext/ext-all.js"></script>
+		
+		<style>		
+			.arbo_tree_cell { padding:5px;border:solid 3px #eee;margin-top:2px; }
+		</style>
+		
+		<script>
+			Ext.onReady(function(){
+			
+				Ext.QuickTips.init();
+				
+				store = new Ext.data.JsonStore({
+					storeId: 'imageStore',
+					proxy: {
+						type: 'ajax',
+						url: 'admin_arbo.php?do=get_list_image',
+						reader: {
+							type: 'json',
+							root: 'images',
+							idProperty: 'name'
+						}
+					},
+					fields: ['name','filename', {name:'size', type: 'float'}, {name:'lastmod', type:'date'}, 'url', 'thumb_url' ]
+				});	
+											
+				var tb = new Ext.Toolbar();
+				tb.render('toolbar');				
+				tb.add(
+					{
+						text: 'Nouvelle rubrique',
+						icon: '../images/chart_organisation_add.png',
+						handler: function(){ edit_panel_edit_arbo('new',0,0); }
+					},
+					'-',
+					{
+						xtype      : 'radiogroup',
+						fieldLabel : 'Type',
+						labelWidth: 30,
+						anchor: '60%',
+						flex: 1,
+						layout: 'hbox',											
+						items: [
+							{
+								boxLabel  : 'PRODUIT',
+								inputValue: 'produit',
+								id        : 'arborescence_type_radio_produit',
+								name : 'arborescence_type_radio'
+							}, 
+							{
+								boxLabel  : 'RECETTE',
+								inputValue: 'recette',
+								id        : 'arborescence_type_radio_recette',
+								name : 'arborescence_type_radio'
+							}
+						],
+						listeners: {
+							change: function(field, newValue, oldValue) {
+								var value = newValue['arborescence_type_radio'];
+								if (Ext.isArray(value))
+									return false;
+								else								
+									get_list_arbo();
+							}
+						}	
+					}				
+				);				
+				tb.doLayout();
+				
+				Ext.getCmp('arborescence_type_radio_produit').setValue(true);
+				
+				myInputTextHtml = Ext.extend(Ext.form.HtmlEditor, {
+					initComponent:function() {
+						config = {
+							xtype:'htmleditor',
+							fieldLabel:'',
+							height:120,
+							width:400,
+							enableSourceEdit:false,
+							enableLinks:false,
+							enableAlignments:false
+						};
+						Ext.apply(this, Ext.apply(this.initialConfig, config)); 
+						myInputTextHtml.superclass.initComponent.apply(this, arguments); 
+					}
+				});
+				
+				var tpl = new Ext.XTemplate(
+					'<tpl for=".">',
+						'<div class="thumb-wrap" id="{name}">',
+						'<div class="thumb"><img style="max-height:60px;max-width:80px;" src="{thumb_url}" title="{filename}"></div>',
+						'<span class="x-editable">{shortName}</span></div>',
+					'</tpl>',
+					'<div class="x-clear"></div>'
+				);
+				
+				tbar = new Ext.Toolbar({
+					style: 'border:1px solid #99BBE8;',
+					items: [
+								{
+									xtype: 'textfield',
+									width:	150,
+									id: 'filtre_pick_up_img_arbo'
+								},
+								{	
+									icon: '../images/search.png',
+									handler: function(){ search_img_arbo(); },
+									tooltip: {text:'Filtrer par nom'}
+								},
+								'-',
+								{
+									text: 'Annuler',
+									handler: function(){ panelPickUpImgArbo.hide(); }
+								}
+						]
+				});
+				
+				datav = new Ext.DataView({
+					autoScroll: true,
+					store: store,
+					tpl: tpl,
+					autoHeight: false,
+					height: 325,
+					multiSelect: false,
+					overClass: 'x-view-over',
+					itemSelector: 'div.thumb-wrap',
+					emptyText: 'No images to display',
+					style: 'border:1px solid #99BBE8; border-top-width: 0',
+
+					prepareData: function(data){
+						return data;
+					},
+
+					listeners: {
+						selectionchange: {
+							fn: function(dv,nodes){
+								if(nodes.length > 0)
+									select_arbo_img( nodes[0].data['filename'] );
+							}
+						}
+					}
+				});
+				
+				var panelLeft = new Ext.Panel({
+					id: 'images-view',
+					frame: true,
+					width: 540,
+					height: 360,
+					autoHeight: true,
+					layout: 'auto',
+					items: [ datav , tbar ]
+				});
+				panelLeft.render('pick_up_img_arbo_content');
+				
+				panelPickUpImgArbo = Ext.create('Ext.window.Window',{
+													title: 'Choisir une image pour la rubrique - Cliquer pour s&eacute;lectionner'
+													,layout: 'fit'
+													,height: 395
+													,width: 550
+													,closable: false
+													,resizable: false
+													,closeAction: 'hide'
+													,modal: true
+													,headerPosition: 'top'
+													,contentEl: 'panel_pick_up_img_arbo'												
+												});
+				
+				panelEditArboDescription = new myInputTextHtml();
+				panelEditArboDescription.render('panel_edit_arbo_description');
+				
+				var colorPickerFont = Ext.create('Ext.Button', {
+					menu: {
+						xtype: 'colormenu',
+						value: '000000',
+						handler: function (obj, rgb) {
+							set_panel_edit_arbo_color('font','#'+rgb.toString());
+						}
+					}, 
+					renderTo: 'panel_edit_arbo_fontcolor',
+					text: '',
+					iconCls: 'colormenu'
+				});
+				
+				var colorPickerBack = Ext.create('Ext.Button', {
+					menu: {
+						xtype: 'colormenu',
+						value: '000000',
+						handler: function (obj, rgb) {
+							set_panel_edit_arbo_color('back','#'+rgb.toString());
+						}
+					}, 
+					renderTo: 'panel_edit_arbo_backcolor',
+					text: '',
+					iconCls: 'colormenu'
+				});
+
+				panelEditArbo = Ext.create('Ext.window.Window',{
+												title: ''
+												,layout: 'fit'
+												,height: 360
+												,width: 440
+												,closable: false
+												,resizable: false
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_edit_arbo'												
+											});
+											
+				panelMoveRubrique = Ext.create('Ext.window.Window',{
+												title: 'S&eacute;lectionner la destination'
+												,layout: 'fit'
+												,height: 150
+												,width: 600
+												,closable: false
+												,resizable: false
+												,modal: false
+												,headerPosition: 'top'
+												,contentEl: 'panel_move_rubrique'												
+											});
+											
+				store.load();
+											
+				edit_panel_edit_arbo('new',0,0);
+				hide_panel_edit_arbo();
+			});
+			
+			function show_panel_pick_up_img_arbo()
+			{
+				//store.load();
+				Ext.getCmp('filtre_pick_up_img_arbo').setValue();
+				panelPickUpImgArbo.show();
+			}
+			
+			function survole_arbo(action,id)
+			{	
+				switch(action)
+				{
+					case 'over' :
+						document.getElementById('arbo_image_'+id).style.visibility = 'visible';
+					break;
+					case 'out' :
+						document.getElementById('arbo_image_'+id).style.visibility = 'hidden';
+					break;
+				}
+			}
+			
+			function select_arbo_img( src )
+			{
+				document.getElementById('panel_edit_arbo_img_src').value = src;
+			
+				if(src != '')
+					src = document.getElementById('path_images').value + src;
+				else
+					src = '../images/none.png';
+				
+				document.getElementById('panel_edit_arbo_img').src = src;
+				
+				panelPickUpImgArbo.hide();
+			}
+			
+			function search_img_arbo()
+			{
+				store.clearFilter();			
+				var filtre = Ext.getCmp('filtre_pick_up_img_arbo').getValue();
+				if(filtre != '')
+				{
+					var regexp = new RegExp(filtre.toLowerCase());
+					store.filter('name',regexp);
+				}
+			}
+			
+			function createRequestObject()
+			{
+				var http;
+				if(window.XMLHttpRequest)
+				{ // Mozilla, Safari, ...
+					http = new XMLHttpRequest();
+				}
+				else if(window.ActiveXObject)
+				{ // Internet Explorer
+					http = new ActiveXObject("Microsoft.XMLHTTP");
+				}
+				return http;
+			}
+
+			function select_panel_edit_arbo_status()
+			{
+				switch(document.getElementById('panel_edit_arbo_status').value)
+				{
+					case "0" :
+						document.getElementById('panel_edit_arbo_status_img').src = '../images/accept.png';
+					break;
+					case "2" :
+						document.getElementById('panel_edit_arbo_status_img').src = '../images/delete.png';
+					break;
+				}
+			}
+			
+			function set_panel_edit_arbo_color( type, hexa_rgb )
+			{
+				document.getElementById('panel_edit_arbo_'+type+'color_span').style.backgroundColor = hexa_rgb;
+				document.getElementById('panel_edit_arbo_'+type+'color_val').value = hexa_rgb;
+			}
+			
+			function edit_panel_edit_arbo(action,id,parent)
+			{
+				document.getElementById('panel_edit_arbo_id').value = id;
+				document.getElementById('panel_edit_arbo_action').value = action;
+				document.getElementById('panel_edit_arbo_parent').value = parent;
+				document.getElementById('panel_edit_arbo_type').value = get_aborescence_type();
+				
+				if(parent != "0")
+				{
+					document.getElementById('panel_edit_arbo_parent_name').innerHTML = document.getElementById('list_arbo_content_'+parent+'_name').value;
+					document.getElementById('panel_edit_arbo_parent_name').style.backgroundColor = document.getElementById('list_arbo_content_'+parent+'_backcolor').value;
+					document.getElementById('panel_edit_arbo_parent_name').style.color = document.getElementById('list_arbo_content_'+parent+'_fontcolor').value;
+					document.getElementById('panel_edit_arbo_parent_panel').style.visibility = 'visible';
+				}
+				else
+					document.getElementById('panel_edit_arbo_parent_panel').style.visibility = 'hidden';
+				
+				panelEditArboDescription.setValue('Description');					
+				switch(action)
+				{
+					case 'new' :
+						var title = 'Nouvelle rubrique';
+						document.getElementById('panel_edit_arbo_name').value = '';
+						document.getElementById('panel_edit_arbo_code').value = '';
+						set_panel_edit_arbo_color( 'back' , '#ffffff' );
+						set_panel_edit_arbo_color( 'font' , '#000000' );
+						document.getElementById('panel_edit_arbo_status_0').selected = true;	
+						document.getElementById('panel_edit_arbo_position').value = '0';	
+
+						select_arbo_img('');						
+					break;
+					case 'edit' :
+						var title = '&Eacute;diter la rubrique';
+						document.getElementById('panel_edit_arbo_name').value = document.getElementById('list_arbo_content_'+id+'_name').value;
+						document.getElementById('panel_edit_arbo_code').value = document.getElementById('list_arbo_content_'+id+'_code').value;
+						set_panel_edit_arbo_color( 'back' , document.getElementById('list_arbo_content_'+id+'_backcolor').value );
+						set_panel_edit_arbo_color( 'font' , document.getElementById('list_arbo_content_'+id+'_fontcolor').value );
+						document.getElementById('panel_edit_arbo_status_'+document.getElementById('list_arbo_content_'+id+'_status').value).selected = true;
+						document.getElementById('panel_edit_arbo_position').value = document.getElementById('list_arbo_content_'+id+'_position').value;						
+						panelEditArboDescription.setValue(document.getElementById('list_arbo_content_'+id+'_description').value);
+
+						select_arbo_img( document.getElementById('list_arbo_content_'+id+'_image').value );							
+					break;
+				}
+				select_panel_edit_arbo_status();
+				panelEditArbo.setTitle(title);
+				panelEditArbo.show();
+				document.getElementById('panel_edit_arbo_description_panel').style.display = 'block';				
+			}
+			
+			function valide_panel_edit_arbo()
+			{
+				if(trim_str(document.getElementById('panel_edit_arbo_name').value)=='')
+				{
+					document.getElementById('panel_edit_arbo_name').focus();
+					alert('Vous devez preciser le nom de la rubrique');
+					return false;
+				}
+				
+				if(trim_str(document.getElementById('panel_edit_arbo_code').value)=='')
+					document.getElementById('panel_edit_arbo_code').value = document.getElementById('panel_edit_arbo_name').value;
+				
+				if(!is_int(document.getElementById('panel_edit_arbo_position').value))
+				{
+					alert('La priorite d\'affichage de la rubrique doit etre un nombre valide');
+					return false;
+				}
+			
+				var http = createRequestObject();
+				http.open('POST', 'admin_arbo.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							switch(http.responseText)
+							{
+								case "0" :
+									save_panel_edit_arbo();
+								break;
+								case "1" :
+									alert('Une rubrique avec le meme code existe deja. Enregistrement impossible.');
+								break;
+								default :
+									alert(http.responseText);
+								break;
+							}
+						}
+					}
+				};
+				var data='do=valide_panel_edit_arbo';
+				data += '&id=' + document.getElementById('panel_edit_arbo_id').value;
+				data += '&type=' + document.getElementById('panel_edit_arbo_type').value;
+				data += '&code=' + trim_str(document.getElementById('panel_edit_arbo_code').value);
+
+				http.send(data);
+			}
+			
+			function save_panel_edit_arbo()
+			{
+				var http = createRequestObject();
+				http.open('POST', 'admin_arbo.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							else
+								hide_panel_edit_arbo();
+							get_list_arbo();
+						}
+					}
+				};
+				var data='do=save_panel_edit_arbo';
+				data += '&id=' + document.getElementById('panel_edit_arbo_id').value;
+				data += '&type=' + document.getElementById('panel_edit_arbo_type').value;
+				data += '&action=' + document.getElementById('panel_edit_arbo_action').value;
+				data += '&parent=' + document.getElementById('panel_edit_arbo_parent').value;
+				data += '&name=' + trim_str(document.getElementById('panel_edit_arbo_name').value);
+				data += '&code=' + trim_str(document.getElementById('panel_edit_arbo_code').value);
+				data += '&backcolor=' + document.getElementById('panel_edit_arbo_backcolor_val').value;
+				data += '&fontcolor=' + document.getElementById('panel_edit_arbo_fontcolor_val').value;
+				data += '&status=' + document.getElementById('panel_edit_arbo_status').value;
+				data += '&position=' + document.getElementById('panel_edit_arbo_position').value;
+				data += '&image=' + document.getElementById('panel_edit_arbo_img_src').value;
+				data += '&description=' + trim_str(panelEditArboDescription.getValue());
+				//alert(data);
+				http.send(data);
+			}
+			
+			function valide_delete_panel_edit_arbo(id)
+			{
+				if(!confirm('Vous confirmez vouloir supprimer cette rubrique ?'))
+				{
+					return false;
+				}
+				
+				var http = createRequestObject();
+				http.open('POST', 'admin_arbo.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							switch(http.responseText)
+							{
+								case "1" : 
+									delete_panel_edit_arbo(id);
+								break;
+								default :
+									alert(http.responseText);
+								break;
+							}
+						}
+					}
+				};
+				var data='do=valide_delete_panel_edit_arbo';
+				data += '&id='+id;
+				data += '&type='+get_aborescence_type();				
+
+				http.send(data);				
+			}
+			
+			function delete_panel_edit_arbo(id)
+			{				
+				var http = createRequestObject();
+				http.open('POST', 'admin_arbo.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							get_list_arbo();
+						}
+					}
+				};
+				var data='do=delete_panel_edit_arbo';
+				data += '&id='+id;
+
+				http.send(data);
+			}
+			
+			function move_panel_edit_arbo(id)
+			{
+				document.getElementById('panel_move_rubrique_id').value = id;
+			
+				var http = createRequestObject();
+				http.open('POST', 'admin_arbo.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							document.getElementById('rubrique_content_move').innerHTML = http.responseText;
+							
+							panelMoveRubrique.show();
+						}
+					}
+				};
+				var data='do=move_panel_edit_arbo';
+				data += '&id='+id;
+				data += '&type='+get_aborescence_type();
+
+				http.send(data);			
+			}
+			
+			function select_rubrique_move(range)
+			{
+				var parent = document.getElementById('select_rubrique_move_range_'+range).value;
+				range ++;
+				
+				try{
+					for(i = range; i < 10; i ++)					
+						document.getElementById('rubrique_move_range_'+i+'_content').innerHTML = '';
+				}catch(e){}
+				
+				var ok = 1;
+				if(parent == "0" && range != "0")
+					ok = 0;					
+				
+				if(ok == 1)
+				{
+					var res = '<select id="select_rubrique_move_range_'+range+'" onchange="select_rubrique_move(\''+range+'\');">';
+					res += '<option value="0"></option>';
+					var count = 0;
+					try{
+						for(i = 0;i < document.getElementById('liste_rubrique_move_'+parent+'_count').value; i++)
+						{
+							res += '<option value="'+document.getElementById('liste_rubrique_move_'+parent+'_'+i+'_id').value+'">'+document.getElementById('liste_rubrique_move_'+parent+'_'+i+'_name').value+'</option>';
+							count ++;
+						}
+					}catch(e){}
+					res += '</select>';
+					
+					try{
+						if(count > 0)
+							document.getElementById('rubrique_move_range_'+range+'_content').innerHTML = res;
+					}catch(e){}
+				}				
+			}
+			
+			function valide_panel_move_rubrique()
+			{
+				var id = 0;
+				var i = 0;
+				try{
+					while(1)
+					{
+						if(document.getElementById('select_rubrique_move_range_'+i).value != '0')
+							id = document.getElementById('select_rubrique_move_range_'+i).value;
+						i ++;
+					}
+				}catch(e){}
+				
+				var http = createRequestObject();
+				http.open('POST', 'admin_arbo.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							if(http.responseText != '')
+								alert(http.responseText);
+							else
+								hide_panel_move_rubrique();
+							get_list_arbo();
+						}
+					}
+				};
+				var data='do=valide_panel_move_rubrique';
+				data += '&id='+document.getElementById('panel_move_rubrique_id').value;
+				data += '&rubrique='+id;
+				
+				http.send(data);
+			}
+			
+			function hide_panel_move_rubrique()
+			{
+				panelMoveRubrique.hide();
+			}
+			
+			function hide_panel_edit_arbo()
+			{				
+				document.getElementById('panel_edit_arbo_description_panel').style.display = 'none';
+				document.getElementById('panel_edit_arbo_parent_panel').style.visibility = 'hidden';
+
+				panelEditArbo.hide();
+			}
+			
+			function get_list_arbo()
+			{								
+				var http = createRequestObject();
+				http.open('POST', 'admin_arbo.php', true);
+				http.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				http.onreadystatechange = function(){
+					if(http.readyState == 4)
+					{
+						if(http.status == 200)
+						{
+							document.getElementById('list_arbo_content').innerHTML = http.responseText;								
+						}
+					}
+				};
+				var data='do=get_list_arbo';
+				data += '&type='+get_aborescence_type();
+
+				http.send(data);
+			}
+			
+			function get_aborescence_type()
+			{
+				var type = 'PRODUIT';
+				if(!Ext.getCmp('arborescence_type_radio_produit').getValue())
+					type = 'RECETTE';
+					
+				return type;
+			}
+			
+			window.onload = function()
+			{
+				document.getElementById('list_arbo_content').style.height = (document.body.clientHeight - 50) + "px";
+			}
+		</script>
+	</head>
+	<body>
+		<div id="toolbar"></div>
+		<div id="list_arbo_content" style="overflow-y:auto;"></div>
+		<div style="visibility:hidden;">
+			<div id="panel_edit_arbo" class="panel">
+				<table cellspacing="4px">
+					<tr id="panel_edit_arbo_parent_panel">
+						<td align="right">
+							<img src="../images/arrow_sub.png"></img>
+						</td>
+						<td class="panel_label">
+							Parent
+						</td>
+						<td colspan="2">
+							<div id="panel_edit_arbo_parent_name" class="arbo_name"></div>
+						</td>
+					</tr>
+					<tr>
+						<td class="panel_label" colspan="2">
+							Nom
+						</td>
+						<td colspan="2">
+							<input type="text" id="panel_edit_arbo_name" class="panel_text"></input>
+						</td>
+						<td rowspan="2" align="center">
+							<div class="boutique_img_picker" onclick="show_panel_pick_up_img_arbo();" title="Cliquer pour modifier l'illustration">
+								<img id="panel_edit_arbo_img" src="" class="product_img"></img>
+								<input type="hidden" id="panel_edit_arbo_img_src"></input>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="panel_label" colspan="2">
+							Code
+						</td>
+						<td colspan="2">
+							<input type="text" id="panel_edit_arbo_code" class="panel_text"></input>
+						</td>
+					</tr>
+					<tr>
+						<td class="panel_label" colspan="2">
+							Couleur
+						</td>
+						<td align="center">
+							<input type="text" id="panel_edit_arbo_backcolor_span" disabled style="cursor:default;width:80px;"></input>
+						</td>
+						<td>
+							<div id="panel_edit_arbo_backcolor"></div>
+							<input type="hidden" id="panel_edit_arbo_backcolor_val"></input>
+						</td>
+						<td class="panel_label">
+							Police
+						</td>
+						<td align="center">
+							<input type="text" id="panel_edit_arbo_fontcolor_span" disabled style="cursor:default;width:50px;"></input>
+						</td>
+						<td>
+							<div id="panel_edit_arbo_fontcolor"></div>
+							<input type="hidden" id="panel_edit_arbo_fontcolor_val"></input>
+						</td>
+					</tr>
+					<tr>
+						<td class="panel_label" colspan="2">
+							Statut
+						</td>
+						<td>
+							<select id="panel_edit_arbo_status" class="panel_select" onchange="select_panel_edit_arbo_status()">
+								<option id="panel_edit_arbo_status_0" value="0">Actif</option>
+								<option id="panel_edit_arbo_status_2" value="2">D&eacute;sactiv&eacute;</option>
+							</select>
+						</td>
+						<td>
+							<img src="" id="panel_edit_arbo_status_img"></img>
+						</td>
+						<td class="panel_label">
+							Priorit&eacute; d'affichage
+						</td>						
+						<td>
+							<input type="text" id="panel_edit_arbo_position" class="panel_text" style="width:50px;"></input>
+						</td>
+					</tr>
+				</table>
+				<div id="panel_edit_arbo_description_panel" style="padding:10px;">
+					<div id="panel_edit_arbo_description"></div>
+				</div>
+				<div align="center">
+					<table>
+						<tr>
+							<td>
+								<button onclick="valide_panel_edit_arbo();">Valider</button>
+							</td>
+							<td>
+								<button onclick="hide_panel_edit_arbo();">Annuler</button>
+							</td>
+						</tr>
+					</table>
+				</div>
+				<input type="hidden" id="panel_edit_arbo_id"></input>
+				<input type="hidden" id="panel_edit_arbo_action"></input>
+				<input type="hidden" id="panel_edit_arbo_parent"></input>
+				<input type="hidden" id="panel_edit_arbo_type"></input>
+			</div>
+		</div>
+		<div style="visibility:hidden;">
+			<div id="panel_pick_up_img_arbo" class="panel" style="padding:0;">
+				<div id="pick_up_img_arbo_content"></div>
+			</div>
+		</div>
+		<div style="visibility:hidden;">
+			<div id="panel_move_rubrique" class="panel" style="padding:0;">
+				<div id="rubrique_content_move" style="padding:20px;height:75px;"></div>
+				<div align="center">
+					<table>
+						<tr>
+							<td><button onclick="valide_panel_move_rubrique();">Valider</button></td>
+							<td><button onclick="hide_panel_move_rubrique();">Annuler</button></td>
+						</tr>
+					</table>
+				</div>
+				<input type="hidden" id="panel_move_rubrique_id" value=""></input>
+			</div>			
+		</div>
+	</body>
+</html>
