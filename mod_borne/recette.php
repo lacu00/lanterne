@@ -252,7 +252,8 @@ if(isset($_POST['do']))
 			}
 			
 			$RECETTE_ERROR = array();
-			$result = mysql_query('select recette_id
+			// Pour supprimer les pictogrammes KO
+			/*$result = mysql_query('select recette_id
 								from 
 									recette_ingredient
 									left join produit on produit.produit_id = recette_ingredient.produit_id
@@ -272,7 +273,7 @@ if(isset($_POST['do']))
 					$RECETTE_ERROR[ $row['recette_id'] ] = 1;
 				}
 			}
-			mysql_free_result($result);	
+			mysql_free_result($result);*/	
 				
 			$RECETTES = array();
 			$result = mysql_query('select *,
@@ -421,7 +422,8 @@ if(isset($_POST['do']))
 				$list_id = ' and recette_arborescence IN ('.$list_id.') ';
 				
 			$RECETTE_ERROR = array();
-			$result = mysql_query('select recette_id
+			// Pour supprimer les pictogrammes KO
+			/*$result = mysql_query('select recette_id
 								from 
 									recette_ingredient
 									left join produit on produit.produit_id = recette_ingredient.produit_id
@@ -441,7 +443,7 @@ if(isset($_POST['do']))
 					$RECETTE_ERROR[ $row['recette_id'] ] = 1;
 				}
 			}
-			mysql_free_result($result);	
+			mysql_free_result($result);*/	
 				
 			$RECETTES = array();
 			$result = mysql_query('select *,
