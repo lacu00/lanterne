@@ -882,7 +882,7 @@ if(isset($_POST['upload']) && $_FILES['userfile']['size'] > 0)
 
 <div align="center">
 
-<input type="hidden" name="MAX_FILE_SIZE" value="1000000000000000"></input>
+<input type="hidden" name="MAX_FILE_SIZE" value="0"></input>
 <input id="type_action_id" type="hidden" name="type_action" value=""></input>
 <input name="userfile" type="file" id="userfile"></input>
 <input type="hidden" name="type" value="<?php if(isset($_GET['type'])) echo $_GET['type']; ?>"></input>
