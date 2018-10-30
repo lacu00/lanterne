@@ -1,6 +1,0 @@
-dump/**
-export/*.xls*
-ftp_images/**
-db.php
-mod_boutique/.htaccess
-mod_boutique/.htpasswd
